@@ -48,15 +48,17 @@
     <!-- Indicador visual de afinação -->
 
     <!-- Agulha do Indicador -->
+
     <View
-        android:id="@+id/viewTuningIndicator"
-        android:layout_width="300dp"
-        android:layout_height="40dp"
-        android:layout_marginTop="24dp"
-        android:background="#444444"
+        android:id="@+id/viewTuningIndicatorTrack"
+        android:layout_width="match_parent"
+        android:layout_height="10dp"
+        android:layout_marginTop="408dp"
+        android:background="@android:color/darker_gray"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/textViewFrequency" />
+        app:layout_constraintTop_toBottomOf="@id/viewTuningNeedle" />
 
     <View
         android:id="@+id/viewTuningNeedle"
@@ -98,11 +100,12 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/viewTuningIndicator" />
 
+    <!-- Botão para Iniciar/Parar -->
     <TextView
         android:id="@+id/textViewTuningName"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="72dp"
+        android:layout_marginBottom="108dp"
         android:text="Afinação: Padrão (EADGBe)"
         android:textColor="@android:color/white"
         android:textSize="20sp"
@@ -110,7 +113,6 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
 
-    <!-- Botão para Iniciar/Parar -->
     <Spinner
 
         android:id="@+id/spinnerTuningType"

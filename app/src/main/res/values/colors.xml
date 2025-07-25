@@ -1,5 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Suas cores existentes podem estar aqui -->
+
+    <!-- Cores adicionadas para o afinador -->
+    <color name="default_text_color">#D3D3D3</color> <!-- Cinza claro, por exemplo -->
+    <color name="tuned_green">#4CAF50</color>       <!-- Verde para afinado -->
+    <color name="near_yellow">#FFEB3B</color>       <!-- Amarelo para próximo -->
+    <color name="untuned_red">#F44336</color>       <!-- Vermelho para desafinado -->
+
+    <!-- Outras cores que você possa ter definido, como: -->
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 </resources>
