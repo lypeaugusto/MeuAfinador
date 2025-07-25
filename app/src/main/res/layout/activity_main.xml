@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/black"
+    android:padding="16dp"
+    tools:context=".MainActivity">
+
+    <!-- TextView para exibir a nota detectada -->
+    <TextView
+        android:id="@+id/textViewNote"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="--"
+        android:textColor="@android:color/white"
+        android:textSize="150sp"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toTopOf="@+id/guideline_center"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.8" />
+
+    <!-- Guia para ajudar no posicionamento vertical -->
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/guideline_center"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        app:layout_constraintGuide_percent="0.45" />
+
+    <!-- TextView para exibir a frequência -->
+    <TextView
+        android:id="@+id/textViewFrequency"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="Frequência: -- Hz"
+        android:textColor="@android:color/white"
+        android:textSize="38sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/textViewNote" />
+
+    <!-- Indicador visual de afinação -->
+
+    <!-- Agulha do Indicador -->
+    <View
+        android:id="@+id/viewTuningIndicator"
+        android:layout_width="300dp"
+        android:layout_height="40dp"
+        android:layout_marginTop="24dp"
+        android:background="#444444"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/textViewFrequency" />
+
+    <View
+        android:id="@+id/viewTuningNeedle"
+        android:layout_width="4dp"
+        android:layout_height="30dp"
+        android:background="@color/black"
+        app:layout_constraintBottom_toBottomOf="@+id/viewTuningIndicator"
+        app:layout_constraintEnd_toEndOf="@+id/viewTuningIndicator"
+        app:layout_constraintStart_toStartOf="@+id/viewTuningIndicator"
+        app:layout_constraintTop_toTopOf="@+id/viewTuningIndicator" />
+
+    <!-- Linha central de "perfeitamente afinado" no indicador -->
+    <View
+        android:id="@+id/viewTuningCenterLine"
+        android:layout_width="2dp"
+        android:layout_height="28dp"
+        android:background="@android:color/darker_gray"
+        app:layout_constraintBottom_toBottomOf="@+id/viewTuningIndicator"
+        app:layout_constraintEnd_toEndOf="@+id/viewTuningIndicator"
+        app:layout_constraintStart_toStartOf="@+id/viewTuningIndicator"
+        app:layout_constraintTop_toTopOf="@+id/viewTuningIndicator" />
+
+
+    <!-- TextView para exibir a diferença em Cents -->
+
+    <!-- TextView para o nome da afinação selecionada -->
+
+    <!-- Spinner para selecionar o tipo de afinação -->
+    <TextView
+        android:id="@+id/textViewCents"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:text="Cents: --"
+        android:textColor="@android:color/white"
+        android:textSize="16sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.498"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/viewTuningIndicator" />
+
+    <TextView
+        android:id="@+id/textViewTuningName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="72dp"
+        android:text="Afinação: Padrão (EADGBe)"
+        android:textColor="@android:color/white"
+        android:textSize="20sp"
+        app:layout_constraintBottom_toTopOf="@+id/spinnerTuningType"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <!-- Botão para Iniciar/Parar -->
+    <Spinner
+
+        android:id="@+id/spinnerTuningType"
+        android:layout_width="0dp"
+        android:layout_height="48dp"
+        android:layout_marginStart="32dp"
+        android:layout_marginEnd="32dp"
+        android:layout_marginBottom="24dp"
+        android:popupBackground="@color/white"
+        android:textColor="@color/white"
+        app:layout_constraintBottom_toTopOf="@+id/buttonToggleListen"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <Button
+        android:id="@+id/buttonToggleListen"
+        android:layout_width="380dp"
+        android:layout_height="74dp"
+        android:layout_marginBottom="32dp"
+        android:backgroundTint="@android:color/holo_red_dark"
+        android:text="Iniciar Afinação"
+        android:textSize="24sp"
+        android:textColor="@color/white"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+
