@@ -19,7 +19,7 @@ import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat; // Adicionado para cores
+import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -46,16 +46,16 @@ public class MainActivity extends AppCompatActivity {
     private TextView textViewTuningName;
     private Spinner spinnerTuningType;
     private Button buttonToggleListen;
-    private View viewTuningNeedle; // Usaremos para a agulha
-    private View viewTuningIndicatorTrack; // Usaremos para a base da agulha
+    private View viewTuningNeedle;
+    private View viewTuningIndicatorTrack;
 
     // Configurações de áudio
     private static final int SAMPLE_RATE = 44100;
     private static final int CHANNEL_CONFIG = AudioFormat.CHANNEL_IN_MONO;
     private static final int AUDIO_FORMAT = AudioFormat.ENCODING_PCM_16BIT;
-    private int bufferSize; // Tamanho do buffer do AudioRecord em bytes
+    private int bufferSize;
 
-    // --- Definições para Afinações (como antes) ---
+    // --- Definições para Afinações ---
     private static class TuningNote {
         String noteName;
         double targetFrequency;
@@ -76,14 +76,14 @@ public class MainActivity extends AppCompatActivity {
         }
         public String getName() { return name; }
         public List<TuningNote> getNotes() { return notes; }
-        @NonNull @Override public String toString() { return name; }
+        @NonNull @Override public String toString() { return name; } // Importante para o ArrayAdapter padrão
     }
 
     private List<TuningPattern> tuningPatterns;
     private TuningPattern currentTuning;
-    private ArrayAdapter<TuningPattern> spinnerAdapter;
+    private ArrayAdapter<TuningPattern> spinnerAdapter; // Mantido como ArrayAdapter<TuningPattern>
 
-    // Frequências base (como antes)
+    // Frequências base
     private static final double FREQ_C2  = 65.41;
     private static final double FREQ_CS2 = 69.30;
     private static final double FREQ_D2  = 73.42;
@@ -128,25 +128,41 @@ public class MainActivity extends AppCompatActivity {
         spinnerTuningType = findViewById(R.id.spinnerTuningType);
         buttonToggleListen = findViewById(R.id.buttonToggleListen);
         viewTuningNeedle = findViewById(R.id.viewTuningNeedle);
-        // Supondo que você tenha um view para o "trilho" da agulha no seu XML:
         viewTuningIndicatorTrack = findViewById(R.id.viewTuningIndicatorTrack);
 
+        initializeTunings();
 
-        initializeTunings(); // Inicializa as afinações
+        // ****** MODIFICAÇÃO PARA O SPINNER ******
+        // Usar os layouts customizados para texto branco
+        spinnerAdapter = new ArrayAdapter<>(
+                this,
+                R.layout.spinner_item_custom, // Layout para o item selecionado (com texto branco)
+                tuningPatterns // Sua lista de objetos TuningPattern
+        );
+        spinnerAdapter.setDropDownViewResource(R.layout.spinner_dropdown_item_custom); // Layout para os itens no dropdown (com texto branco)
+        // ****** FIM DA MODIFICAÇÃO PARA O SPINNER ******
 
-        spinnerAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, tuningPatterns);
-        spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerTuningType.setAdapter(spinnerAdapter);
 
         if (!tuningPatterns.isEmpty()) {
             currentTuning = tuningPatterns.get(0);
-            spinnerTuningType.setSelection(0);
+            spinnerTuningType.setSelection(0); // O primeiro item da lista tuningPatterns será exibido
             updateTuningDisplay();
         }
 
         spinnerTuningType.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                // O 'view' aqui pode ser nulo se o listener for chamado programaticamente
+                // ou durante a configuração inicial.
+                // A cor do texto já deve estar definida pelos layouts spinner_item_custom
+                // e spinner_dropdown_item_custom.
+                // Se você precisar mudar a cor do texto do item selecionado DINAMICAMENTE aqui,
+                // você precisaria fazer:
+                // if (view instanceof TextView) {
+                //    ((TextView) view).setTextColor(ContextCompat.getColor(MainActivity.this, android.R.color.white));
+                // }
+
                 if (position >= 0 && position < tuningPatterns.size()) {
                     currentTuning = tuningPatterns.get(position);
                     Log.d(TAG, "Spinner: Afinação selecionada: " + currentTuning.getName());
@@ -156,7 +172,7 @@ public class MainActivity extends AppCompatActivity {
                             textViewNote.setText("--");
                             textViewFrequency.setText("Frequência: -- Hz");
                             textViewCents.setText("Cents: --");
-                            updateTuningNeedlePosition(0, true); // Resetar agulha
+                            updateTuningNeedlePosition(0, true);
                         });
                     }
                 } else {
@@ -190,25 +206,20 @@ public class MainActivity extends AppCompatActivity {
 
         ActivityCompat.requestPermissions(this, permissions, REQUEST_RECORD_AUDIO_PERMISSION);
 
-        // bufferSize é em bytes. Para shorts, o número de amostras será bufferSize / 2
         int minBufferSize = AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT);
         if (minBufferSize == AudioRecord.ERROR_BAD_VALUE || minBufferSize == AudioRecord.ERROR) {
             Log.e(TAG, "Tamanho do buffer inválido: " + minBufferSize);
             Toast.makeText(this, "Não foi possível inicializar o buffer de áudio.", Toast.LENGTH_SHORT).show();
             buttonToggleListen.setEnabled(false);
-            bufferSize = -1; // Indica erro
+            bufferSize = -1;
         } else {
-            // Usar um buffer um pouco maior que o mínimo pode ser bom,
-            // e idealmente uma potência de 2 para alguns algoritmos de FFT,
-            // mas para YIN, o minBufferSize * 2 ou * 4 é geralmente OK.
-            // Para YIN, um buffer de 1024 a 2048 amostras (2048 a 4096 bytes) é comum.
-            bufferSize = Math.max(minBufferSize, 2048 * 2); // Ex: 2048 amostras (shorts) = 4096 bytes
-            if (bufferSize > 4096 * 2) bufferSize = 4096 * 2; // Limite superior
+            bufferSize = Math.max(minBufferSize, 2048 * 2);
+            if (bufferSize > 4096 * 2) bufferSize = 4096 * 2;
             Log.d(TAG, "Min buffer size: " + minBufferSize + ", Selected buffer size: " + bufferSize + " bytes (" + (bufferSize/2) + " shorts)");
         }
 
         updateButtonUI();
-        updateTuningNeedlePosition(0, true); // Inicializa a posição da agulha
+        updateTuningNeedlePosition(0, true);
     }
 
     private void initializeTunings() {
@@ -243,20 +254,28 @@ public class MainActivity extends AppCompatActivity {
                 new TuningNote("C3", FREQ_C3), new TuningNote("F3", FREQ_F3),
                 new TuningNote("A3", FREQ_A3), new TuningNote("D4", FREQ_D4)
         )));
+        // Adicione um item de placeholder se quiser um texto específico no início
+        // tuningPatterns.add(0, new TuningPattern("Selecione uma Afinação", new ArrayList<>()));
+        // Se você fizer isso, ajuste a lógica de seleção inicial e onItemSelected
     }
 
     private void updateTuningDisplay() {
         if (currentTuning != null && textViewTuningName != null) {
-            StringBuilder tuningText = new StringBuilder(currentTuning.getName() + ": ");
-            for (int i = 0; i < currentTuning.getNotes().size(); i++) {
-                tuningText.append(currentTuning.getNotes().get(i).getNoteName().split("/")[0]);
-                if (i < currentTuning.getNotes().size() - 1) {
-                    tuningText.append(" ");
+            // Se o nome for "Selecione uma Afinação", talvez você não queira mostrar as notas
+            if ("Selecione uma Afinação".equals(currentTuning.getName())) {
+                textViewTuningName.setText(currentTuning.getName());
+            } else {
+                StringBuilder tuningText = new StringBuilder(currentTuning.getName() + ": ");
+                for (int i = 0; i < currentTuning.getNotes().size(); i++) {
+                    tuningText.append(currentTuning.getNotes().get(i).getNoteName().split("/")[0]);
+                    if (i < currentTuning.getNotes().size() - 1) {
+                        tuningText.append(" ");
+                    }
                 }
+                textViewTuningName.setText(tuningText.toString());
             }
-            textViewTuningName.setText(tuningText.toString());
         } else if (textViewTuningName != null) {
-            textViewTuningName.setText("Selecione uma afinação");
+            textViewTuningName.setText("Nenhuma afinação selecionada"); // Fallback
         }
     }
 
@@ -267,7 +286,6 @@ public class MainActivity extends AppCompatActivity {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 permissionToRecordAccepted = true;
                 Log.d(TAG, "Permissão de áudio concedida.");
-                // Se o bufferSize não foi inicializado corretamente antes devido à falta de permissão
                 if (bufferSize <= 0) {
                     int minBufferSize = AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT);
                     if (minBufferSize > 0) {
@@ -305,7 +323,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            return; // Já verificado acima, mas para segurança
+            return;
         }
         audioRecord = new AudioRecord(MediaRecorder.AudioSource.MIC,
                 SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT, bufferSize);
@@ -335,10 +353,10 @@ public class MainActivity extends AppCompatActivity {
 
     private void stopRecording() {
         if (!isRecording) return;
-        isRecording = false; // Sinaliza para a thread parar
+        isRecording = false;
         if (recordingThread != null) {
             try {
-                recordingThread.join(500); // Espera a thread terminar
+                recordingThread.join(500);
             } catch (InterruptedException e) {
                 Log.e(TAG, "Interrupção ao aguardar a thread de gravação.", e);
                 Thread.currentThread().interrupt();
@@ -363,7 +381,7 @@ public class MainActivity extends AppCompatActivity {
             textViewNote.setText("--");
             textViewFrequency.setText("Frequência: -- Hz");
             textViewCents.setText("Cents: --");
-            updateTuningNeedlePosition(0, true); // Resetar agulha
+            updateTuningNeedlePosition(0, true);
         });
     }
 
@@ -371,17 +389,14 @@ public class MainActivity extends AppCompatActivity {
         runOnUiThread(() -> {
             if (isRecording) {
                 buttonToggleListen.setText("Parar Afinação");
-                // buttonToggleListen.setBackgroundColor(ContextCompat.getColor(this, android.R.color.holo_green_dark));
             } else {
                 buttonToggleListen.setText("Iniciar Afinação");
-                // buttonToggleListen.setBackgroundColor(ContextCompat.getColor(this, android.R.color.holo_red_dark));
             }
             buttonToggleListen.setEnabled(permissionToRecordAccepted && bufferSize > 0);
         });
     }
 
     private void processAudio() {
-        // O número de shorts é bufferSize (em bytes) / 2 (bytes por short)
         short[] audioData = new short[bufferSize / 2];
         Log.d(TAG, "Thread de processamento de áudio iniciada. Lendo " + audioData.length + " shorts.");
 
@@ -389,7 +404,6 @@ public class MainActivity extends AppCompatActivity {
             int shortsRead = audioRecord.read(audioData, 0, audioData.length);
 
             if (shortsRead > 0) {
-                // Log.d(TAG, "Lidos " + shortsRead + " shorts.");
                 double detectedFrequency = calculateDominantFrequency(audioData, shortsRead);
                 String detectedNote = "--";
                 double centsOff = 0.0;
@@ -413,7 +427,7 @@ public class MainActivity extends AppCompatActivity {
                             textViewNote.setText("--");
                             textViewCents.setText("Cents: --");
                         }
-                    } else { // Nenhuma frequência detectada claramente
+                    } else {
                         textViewFrequency.setText("Frequência: -- Hz");
                         textViewNote.setText("--");
                         textViewCents.setText("Cents: --");
@@ -423,19 +437,12 @@ public class MainActivity extends AppCompatActivity {
 
             } else if (shortsRead < 0) {
                 Log.e(TAG, "Erro ao ler áudio. Código: " + shortsRead);
-                // Pode ser necessário parar a gravação ou tratar o erro de forma mais robusta
-                // stopRecording(); // Exemplo: para em caso de erro grave
-                // break;
             }
-            // Pequena pausa para não sobrecarregar a CPU, mas YIN já é intensivo
-            // try { Thread.sleep(10); } catch (InterruptedException e) { break; }
         }
         Log.d(TAG, "Thread de processamento de áudio terminando.");
     }
 
-
-    // --- IMPLEMENTAÇÃO DO YIN ---
-    private final float YIN_THRESHOLD = 0.15f; // Ajuste este valor! (0.10 a 0.20 é um bom começo)
+    private final float YIN_THRESHOLD = 0.15f;
 
     private float[] shortToFloatArray(short[] pcmData, int readSize) {
         float[] floatData = new float[readSize];
@@ -446,15 +453,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private float yinProcess(float[] audioBuffer, int sampleRate) {
-        int yinBufferSize = audioBuffer.length / 2; // Tamanho do buffer da função de diferença (metade do buffer de áudio)
+        int yinBufferSize = audioBuffer.length / 2;
         if (yinBufferSize == 0) return -1.0f;
-        float[] diffFunction = new float[yinBufferSize]; // Função de diferença d(tau)
+        float[] diffFunction = new float[yinBufferSize];
 
-        // Passo 2: Função de Diferença (Quadrática)
         for (int tau = 0; tau < yinBufferSize; tau++) {
             diffFunction[tau] = 0;
-            // tau = 0 não é usado para o período, mas é calculado para a normalização
-            for (int j = 0; j < yinBufferSize; j++) { // yinBufferSize é bufferSize/2, que é o número de lags que podemos calcular
+            for (int j = 0; j < yinBufferSize; j++) {
                 if (j + tau < audioBuffer.length) {
                     float delta = audioBuffer[j] - audioBuffer[j + tau];
                     diffFunction[tau] += delta * delta;
@@ -462,32 +467,26 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        // Passo 3: Função de Diferença Cumulativa Normalizada (CMNDF)
-        // diffFunction[tau] agora se torna d'(tau)
         float runningSum = 0;
-        diffFunction[0] = 1; // d'(0) é 1 por definição
+        diffFunction[0] = 1;
         for (int tau = 1; tau < yinBufferSize; tau++) {
             runningSum += diffFunction[tau];
-            if (runningSum == 0) { // Evita divisão por zero se o sinal for completamente silencioso até tau
+            if (runningSum == 0) {
                 diffFunction[tau] = 1;
             } else {
                 diffFunction[tau] *= tau / runningSum;
             }
         }
 
-        // Passo 4: Encontrar o primeiro mínimo local abaixo do limiar
         int periodTau = -1;
-        // Definir limites de lag para frequências razoáveis (ex: 50Hz a 1500Hz)
-        // Frequência = sampleRate / tau  => tau = sampleRate / Frequência
-        int minLag = sampleRate / 1500; // Frequência máxima de interesse
+        int minLag = sampleRate / 1500;
         if (minLag < 1) minLag = 1;
-        int maxLag = sampleRate / 50;   // Frequência mínima de interesse
+        int maxLag = sampleRate / 50;
         if (maxLag >= yinBufferSize) maxLag = yinBufferSize - 1;
 
         for (int tau = minLag; tau <= maxLag; tau++) {
-            if (tau == 0) continue; // Não deve acontecer se minLag >=1
+            if (tau == 0) continue;
             if (diffFunction[tau] < YIN_THRESHOLD) {
-                // Procurar o mínimo real em torno deste tau
                 while (tau + 1 <= maxLag && diffFunction[tau + 1] < diffFunction[tau]) {
                     tau++;
                 }
@@ -496,27 +495,22 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        // Passo 5: Calcular a Frequência e aplicar Interpolação Parabólica
         if (periodTau != -1) {
-            // Verifica se temos vizinhos para a interpolação
             if (periodTau > 0 && periodTau < yinBufferSize - 1) {
                 float s0 = diffFunction[periodTau - 1];
                 float s1 = diffFunction[periodTau];
                 float s2 = diffFunction[periodTau + 1];
-
-                // Evitar divisão por zero ou valores estranhos na interpolação
                 float divisor = 2 * s1 - s0 - s2;
-                if (Math.abs(divisor) > 1e-6) { // Se o divisor não for muito próximo de zero
-                    float betterTau = periodTau + (s0 - s2) / (2 * divisor); // Corrigido sinal do numerador
+                if (Math.abs(divisor) > 1e-6) {
+                    float betterTau = periodTau + (s0 - s2) / (2 * divisor);
                     if (!Float.isNaN(betterTau) && !Float.isInfinite(betterTau) && betterTau > 0 && betterTau < yinBufferSize) {
                         return (float) sampleRate / betterTau;
                     }
                 }
             }
-            // Fallback para o tau discreto se a interpolação não for aplicável ou falhar
             return (float) sampleRate / periodTau;
         }
-        return -1.0f; // Nenhuma frequência clara encontrada
+        return -1.0f;
     }
 
     private double calculateDominantFrequency(short[] audioData, int shortsRead) {
@@ -525,28 +519,18 @@ public class MainActivity extends AppCompatActivity {
         }
         float[] floatAudioBuffer = shortToFloatArray(audioData, shortsRead);
         float detectedPitchInHz = yinProcess(floatAudioBuffer, SAMPLE_RATE);
-
-        if (detectedPitchInHz > 0) {
-            // Log.d(TAG, "YIN Detected Pitch: " + detectedPitchInHz + " Hz");
-            return detectedPitchInHz;
-        } else {
-            // Log.d(TAG, "YIN: No clear pitch detected.");
-            return 0.0;
-        }
+        return (detectedPitchInHz > 0) ? detectedPitchInHz : 0.0;
     }
-    // --- FIM DA IMPLEMENTAÇÃO DO YIN ---
 
-
-    // Adaptado para usar currentTuning (como antes)
     private String getNoteFromFrequency(double frequency) {
-        if (frequency <= 0 || currentTuning == null) return "--";
+        if (frequency <= 0 || currentTuning == null || currentTuning.getNotes().isEmpty()) return "--";
+        // Não processar se a afinação for "Selecione uma Afinação"
+        if ("Selecione uma Afinação".equals(currentTuning.getName())) return "--";
+
         String bestMatchNote = "--";
         double minDifference = Double.MAX_VALUE;
         for (TuningNote tuningNote : currentTuning.getNotes()) {
             double targetFreq = tuningNote.getTargetFrequency();
-            // A comparação de frequência para encontrar a nota pode ser feita em escala logarítmica (cents)
-            // ou diretamente. A tolerância é importante.
-            // Tolerância de +/- 25 cents (meio semitom = 50 cents)
             double lowerBound = targetFreq * Math.pow(2, -25.0 / 1200.0);
             double upperBound = targetFreq * Math.pow(2, 25.0 / 1200.0);
 
@@ -558,17 +542,16 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         }
-        // if (bestMatchNote.equals("--")) {
-        //     Log.d(TAG, "getNote: Freq=" + String.format("%.2f", frequency) + " -> Nenhuma nota próxima na afinação '" + currentTuning.getName() + "'");
-        // }
         return bestMatchNote;
     }
 
-    // Adaptado para usar currentTuning e a nota encontrada (como antes)
     private double getCentsOff(double detectedFrequency, String detectedNoteName) {
-        if (detectedFrequency <= 0 || detectedNoteName == null || detectedNoteName.equals("--") || currentTuning == null) {
+        if (detectedFrequency <= 0 || detectedNoteName == null || detectedNoteName.equals("--") || currentTuning == null || currentTuning.getNotes().isEmpty()) {
             return 0.0;
         }
+        // Não processar se a afinação for "Selecione uma Afinação"
+        if ("Selecione uma Afinação".equals(currentTuning.getName())) return 0.0;
+
         double targetFrequency = 0.0;
         for (TuningNote note : currentTuning.getNotes()) {
             if (note.getNoteName().equals(detectedNoteName)) {
@@ -580,47 +563,39 @@ public class MainActivity extends AppCompatActivity {
         return 1200 * (Math.log(detectedFrequency / targetFrequency) / Math.log(2));
     }
 
-
-    // --- MÉTODO DE ATUALIZAÇÃO DA AGULHA ---
     private void updateTuningNeedlePosition(double centsOff, boolean reset) {
         if (viewTuningNeedle == null || viewTuningIndicatorTrack == null) return;
 
         float trackWidth = viewTuningIndicatorTrack.getWidth();
-        if (trackWidth == 0 && !reset) return; // View ainda não foi medida, exceto no reset
+        if (trackWidth == 0 && !reset) return;
 
-        float maxCentsDisplay = 50.0f; // A agulha representa +/- 50 cents
+        float maxCentsDisplay = 50.0f;
         float normalizedPosition = 0f;
 
         if (!reset) {
             normalizedPosition = (float) Math.max(-1.0, Math.min(1.0, centsOff / maxCentsDisplay));
         }
 
-        // A translação será metade da largura do trilho para ir do centro para as bordas
         float translationX = normalizedPosition * (trackWidth / 2.0f);
 
         viewTuningNeedle.animate()
                 .translationX(translationX)
-                .setDuration(reset ? 0 : 100) // Sem animação no reset
+                .setDuration(reset ? 0 : 100)
                 .start();
 
-        // Atualizar cor da nota e/ou agulha
-        int color = ContextCompat.getColor(this, R.color.default_text_color); // Defina uma cor padrão
-        if (!reset) {
-            if (Math.abs(centsOff) < 5) { // Limiar para "afinado" (ex: +/- 5 cents)
-                color = ContextCompat.getColor(this, R.color.tuned_green); // Defina em colors.xml
-            } else if (Math.abs(centsOff) < 20) { // Limiar para "próximo"
-                color = ContextCompat.getColor(this, R.color.near_yellow); // Defina em colors.xml
-            } else { // Desafinado
-                color = ContextCompat.getColor(this, R.color.untuned_red); // Defina em colors.xml
+        int color = ContextCompat.getColor(this, R.color.default_text_color);
+        if (!reset && currentTuning != null && !"Selecione uma Afinação".equals(currentTuning.getName())) {
+            if (Math.abs(centsOff) < 5) {
+                color = ContextCompat.getColor(this, R.color.tuned_green);
+            } else if (Math.abs(centsOff) < 20) {
+                color = ContextCompat.getColor(this, R.color.near_yellow);
+            } else {
+                color = ContextCompat.getColor(this, R.color.untuned_red);
             }
         }
         textViewNote.setTextColor(color);
-        // viewTuningNeedle.getBackground().setColorFilter(color, PorterDuff.Mode.SRC_IN); // Se a agulha for um drawable
     }
-    // ------------------------------------
 
-
-    // --- MÉTODOS DO CICLO DE VIDA DA ACTIVITY ---
     @Override
     protected void onPause() {
         super.onPause();
@@ -635,9 +610,6 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         Log.d(TAG, "onResume() chamado.");
         updateButtonUI();
-        if (!isRecording && permissionToRecordAccepted && bufferSize > 0) {
-            // Opcional: reiniciar a escuta se estava ativa antes, ou deixar para o usuário
-        }
     }
 
     @Override
@@ -645,8 +617,8 @@ public class MainActivity extends AppCompatActivity {
         super.onDestroy();
         Log.d(TAG, "onDestroy() chamado.");
         if (isRecording) {
-            stopRecording(); // Garante que a thread e o AudioRecord sejam liberados
-        } else if (audioRecord != null) { // Mesmo se não estiver gravando, pode ter sido inicializado
+            stopRecording();
+        } else if (audioRecord != null) {
             audioRecord.release();
             audioRecord = null;
         }
