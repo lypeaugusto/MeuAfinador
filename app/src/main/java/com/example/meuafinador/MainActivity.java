@@ -76,12 +76,13 @@ public class MainActivity extends AppCompatActivity {
         }
         public String getName() { return name; }
         public List<TuningNote> getNotes() { return notes; }
-        @NonNull @Override public String toString() { return name; } // Importante para o ArrayAdapter padrão
+        @NonNull @Override public String toString() { return name; }
     }
 
     private List<TuningPattern> tuningPatterns;
     private TuningPattern currentTuning;
-    private ArrayAdapter<TuningPattern> spinnerAdapter; // Mantido como ArrayAdapter<TuningPattern>
+    private ArrayAdapter<TuningPattern> spinnerAdapter;
+    private List<TuningNote> chromaticNotes; // Lista para o modo cromático
 
     // Frequências base
     private static final double FREQ_C2  = 65.41;
@@ -130,39 +131,28 @@ public class MainActivity extends AppCompatActivity {
         viewTuningNeedle = findViewById(R.id.viewTuningNeedle);
         viewTuningIndicatorTrack = findViewById(R.id.viewTuningIndicatorTrack);
 
-        initializeTunings();
+        // CORREÇÃO: Ordem de inicialização correta
+        initializeChromaticScale(); // 1. Cria a escala cromática
+        initializeTunings();        // 2. Cria as afinações (que usa a escala cromática)
 
-        // ****** MODIFICAÇÃO PARA O SPINNER ******
-        // Usar os layouts customizados para texto branco
+        // Configuração do Spinner Adapter
         spinnerAdapter = new ArrayAdapter<>(
                 this,
-                R.layout.spinner_item_custom, // Layout para o item selecionado (com texto branco)
-                tuningPatterns // Sua lista de objetos TuningPattern
+                R.layout.spinner_item_custom,
+                tuningPatterns
         );
-        spinnerAdapter.setDropDownViewResource(R.layout.spinner_dropdown_item_custom); // Layout para os itens no dropdown (com texto branco)
-        // ****** FIM DA MODIFICAÇÃO PARA O SPINNER ******
-
+        spinnerAdapter.setDropDownViewResource(R.layout.spinner_dropdown_item_custom);
         spinnerTuningType.setAdapter(spinnerAdapter);
 
         if (!tuningPatterns.isEmpty()) {
             currentTuning = tuningPatterns.get(0);
-            spinnerTuningType.setSelection(0); // O primeiro item da lista tuningPatterns será exibido
+            spinnerTuningType.setSelection(0);
             updateTuningDisplay();
         }
 
         spinnerTuningType.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                // O 'view' aqui pode ser nulo se o listener for chamado programaticamente
-                // ou durante a configuração inicial.
-                // A cor do texto já deve estar definida pelos layouts spinner_item_custom
-                // e spinner_dropdown_item_custom.
-                // Se você precisar mudar a cor do texto do item selecionado DINAMICAMENTE aqui,
-                // você precisaria fazer:
-                // if (view instanceof TextView) {
-                //    ((TextView) view).setTextColor(ContextCompat.getColor(MainActivity.this, android.R.color.white));
-                // }
-
                 if (position >= 0 && position < tuningPatterns.size()) {
                     currentTuning = tuningPatterns.get(position);
                     Log.d(TAG, "Spinner: Afinação selecionada: " + currentTuning.getName());
@@ -222,49 +212,84 @@ public class MainActivity extends AppCompatActivity {
         updateTuningNeedlePosition(0, true);
     }
 
+    // NOVO MÉTODO: para criar a escala cromática completa
+    private void initializeChromaticScale() {
+        chromaticNotes = new ArrayList<>();
+        // Adicionando uma faixa de notas que cobre guitarra e baixo
+        chromaticNotes.add(new TuningNote("C2", FREQ_C2));
+        chromaticNotes.add(new TuningNote("C#2/Db2", FREQ_CS2));
+        chromaticNotes.add(new TuningNote("D2", FREQ_D2));
+        chromaticNotes.add(new TuningNote("D#2/Eb2", FREQ_DS2));
+        chromaticNotes.add(new TuningNote("E2", FREQ_E2));
+        chromaticNotes.add(new TuningNote("F2", FREQ_F2));
+        chromaticNotes.add(new TuningNote("F#2/Gb2", FREQ_FS2));
+        chromaticNotes.add(new TuningNote("G2", FREQ_G2));
+        chromaticNotes.add(new TuningNote("G#2/Ab2", FREQ_GS2));
+        chromaticNotes.add(new TuningNote("A2", FREQ_A2));
+        chromaticNotes.add(new TuningNote("A#2/Bb2", FREQ_AS2));
+        chromaticNotes.add(new TuningNote("B2", FREQ_B2));
+        chromaticNotes.add(new TuningNote("C3", FREQ_C3));
+        chromaticNotes.add(new TuningNote("C#3/Db3", FREQ_CS3));
+        chromaticNotes.add(new TuningNote("D3", FREQ_D3));
+        chromaticNotes.add(new TuningNote("D#3/Eb3", FREQ_DS3));
+        chromaticNotes.add(new TuningNote("E3", FREQ_E3));
+        chromaticNotes.add(new TuningNote("F3", FREQ_F3));
+        chromaticNotes.add(new TuningNote("F#3/Gb3", FREQ_FS3));
+        chromaticNotes.add(new TuningNote("G3", FREQ_G3));
+        chromaticNotes.add(new TuningNote("G#3/Ab3", FREQ_GS3));
+        chromaticNotes.add(new TuningNote("A3", FREQ_A3));
+        chromaticNotes.add(new TuningNote("A#3/Bb3", FREQ_AS3));
+        chromaticNotes.add(new TuningNote("B3", FREQ_B3));
+        chromaticNotes.add(new TuningNote("C4", FREQ_C4));
+        chromaticNotes.add(new TuningNote("C#4/Db4", FREQ_CS4));
+        chromaticNotes.add(new TuningNote("D4", FREQ_D4));
+        chromaticNotes.add(new TuningNote("D#4/Eb4", FREQ_DS4));
+        chromaticNotes.add(new TuningNote("E4", FREQ_E4));
+    }
+
+    // MÉTODO MODIFICADO: para incluir o Modo Livre
     private void initializeTunings() {
         tuningPatterns = new ArrayList<>();
-        // E Standard
+
+        // Adiciona o "Modo Livre" como a primeira opção.
+        tuningPatterns.add(new TuningPattern("Modo Livre (Cromático)", chromaticNotes));
+
+        // O resto das suas afinações...
         tuningPatterns.add(new TuningPattern("E Standard", Arrays.asList(
                 new TuningNote("E2", FREQ_E2), new TuningNote("A2", FREQ_A2),
                 new TuningNote("D3", FREQ_D3), new TuningNote("G3", FREQ_G3),
                 new TuningNote("B3", FREQ_B3), new TuningNote("E4", FREQ_E4)
         )));
-        // Eb Standard
         tuningPatterns.add(new TuningPattern("Eb Standard", Arrays.asList(
                 new TuningNote("D#2/Eb2", FREQ_DS2), new TuningNote("G#2/Ab2", FREQ_GS2),
                 new TuningNote("C#3/Db3", FREQ_CS3), new TuningNote("F#3/Gb3", FREQ_FS3),
                 new TuningNote("A#3/Bb3", FREQ_AS3), new TuningNote("D#4/Eb4", FREQ_DS4)
         )));
-        // Drop D
         tuningPatterns.add(new TuningPattern("Drop D", Arrays.asList(
                 new TuningNote("D2", FREQ_D2), new TuningNote("A2", FREQ_A2),
                 new TuningNote("D3", FREQ_D3), new TuningNote("G3", FREQ_G3),
                 new TuningNote("B3", FREQ_B3), new TuningNote("E4", FREQ_E4)
         )));
-        // Drop C
         tuningPatterns.add(new TuningPattern("Drop C", Arrays.asList(
                 new TuningNote("C2", FREQ_C2), new TuningNote("G2", FREQ_G2),
                 new TuningNote("C3", FREQ_C3), new TuningNote("F3", FREQ_F3),
                 new TuningNote("A3", FREQ_A3), new TuningNote("D4", FREQ_D4)
         )));
-        // D Standard
         tuningPatterns.add(new TuningPattern("D Standard", Arrays.asList(
                 new TuningNote("D2", FREQ_D2), new TuningNote("G2", FREQ_G2),
                 new TuningNote("C3", FREQ_C3), new TuningNote("F3", FREQ_F3),
                 new TuningNote("A3", FREQ_A3), new TuningNote("D4", FREQ_D4)
         )));
-        // Adicione um item de placeholder se quiser um texto específico no início
-        // tuningPatterns.add(0, new TuningPattern("Selecione uma Afinação", new ArrayList<>()));
-        // Se você fizer isso, ajuste a lógica de seleção inicial e onItemSelected
     }
 
+    // MÉTODO MODIFICADO: para exibir o nome da afinação corretamente
     private void updateTuningDisplay() {
         if (currentTuning != null && textViewTuningName != null) {
-            // Se o nome for "Selecione uma Afinação", talvez você não queira mostrar as notas
-            if ("Selecione uma Afinação".equals(currentTuning.getName())) {
+            // Se for o modo cromático, apenas mostre o nome.
+            if (currentTuning.getName().contains("Modo Livre")) {
                 textViewTuningName.setText(currentTuning.getName());
             } else {
+                // Para outras afinações, mostre o nome e as notas.
                 StringBuilder tuningText = new StringBuilder(currentTuning.getName() + ": ");
                 for (int i = 0; i < currentTuning.getNotes().size(); i++) {
                     tuningText.append(currentTuning.getNotes().get(i).getNoteName().split("/")[0]);
@@ -275,7 +300,7 @@ public class MainActivity extends AppCompatActivity {
                 textViewTuningName.setText(tuningText.toString());
             }
         } else if (textViewTuningName != null) {
-            textViewTuningName.setText("Nenhuma afinação selecionada"); // Fallback
+            textViewTuningName.setText("Nenhuma afinação selecionada");
         }
     }
 
@@ -409,6 +434,7 @@ public class MainActivity extends AppCompatActivity {
                 double centsOff = 0.0;
 
                 if (detectedFrequency > 0) {
+                    // CORREÇÃO: A lógica para encontrar a nota agora é unificada
                     detectedNote = getNoteFromFrequency(detectedFrequency);
                     centsOff = getCentsOff(detectedFrequency, detectedNote);
                 }
@@ -421,7 +447,8 @@ public class MainActivity extends AppCompatActivity {
                     if (finalDetectedFrequency > 0) {
                         textViewFrequency.setText(String.format("Frequência: %.2f Hz", finalDetectedFrequency));
                         if (!finalDetectedNote.equals("--")) {
-                            textViewNote.setText(finalDetectedNote);
+                            // Mostra a nota detectada e os cents
+                            textViewNote.setText(finalDetectedNote.split("/")[0]); // Mostra só o sustenido (Ex: C#)
                             textViewCents.setText(String.format("Cents: %.1f", finalCentsOff));
                         } else {
                             textViewNote.setText("--");
@@ -522,46 +549,54 @@ public class MainActivity extends AppCompatActivity {
         return (detectedPitchInHz > 0) ? detectedPitchInHz : 0.0;
     }
 
+    // MÉTODO MODIFICADO E UNIFICADO para encontrar a nota mais próxima
     private String getNoteFromFrequency(double frequency) {
-        if (frequency <= 0 || currentTuning == null || currentTuning.getNotes().isEmpty()) return "--";
-        // Não processar se a afinação for "Selecione uma Afinação"
-        if ("Selecione uma Afinação".equals(currentTuning.getName())) return "--";
+        if (frequency <= 0 || currentTuning == null || currentTuning.getNotes().isEmpty()) {
+            return "--";
+        }
 
         String bestMatchNote = "--";
         double minDifference = Double.MAX_VALUE;
+
+        // Percorre a lista de notas da afinação ATUAL.
+        // Para "Modo Livre", esta lista contém TODAS as notas cromáticas.
         for (TuningNote tuningNote : currentTuning.getNotes()) {
             double targetFreq = tuningNote.getTargetFrequency();
-            double lowerBound = targetFreq * Math.pow(2, -25.0 / 1200.0);
-            double upperBound = targetFreq * Math.pow(2, 25.0 / 1200.0);
+            double centsDifference = Math.abs(1200 * (Math.log(frequency / targetFreq) / Math.log(2)));
 
-            if (frequency >= lowerBound && frequency <= upperBound) {
-                double difference = Math.abs(frequency - targetFreq);
-                if (difference < minDifference) {
-                    minDifference = difference;
-                    bestMatchNote = tuningNote.getNoteName();
-                }
+            if (centsDifference < minDifference) {
+                minDifference = centsDifference;
+                bestMatchNote = tuningNote.getNoteName();
             }
         }
+
+        // Se a nota mais próxima estiver a mais de 50 cents, está no meio de duas notas.
+        if (minDifference > 50) {
+            return "--";
+        }
+
         return bestMatchNote;
     }
 
+    // Este método agora funciona corretamente com a lógica acima
     private double getCentsOff(double detectedFrequency, String detectedNoteName) {
-        if (detectedFrequency <= 0 || detectedNoteName == null || detectedNoteName.equals("--") || currentTuning == null || currentTuning.getNotes().isEmpty()) {
+        if (detectedFrequency <= 0 || detectedNoteName == null || detectedNoteName.equals("--") || currentTuning == null) {
             return 0.0;
         }
-        // Não processar se a afinação for "Selecione uma Afinação"
-        if ("Selecione uma Afinação".equals(currentTuning.getName())) return 0.0;
 
         double targetFrequency = 0.0;
         for (TuningNote note : currentTuning.getNotes()) {
+            // A comparação deve ser feita com o nome completo da nota (ex: "C#2/Db2")
             if (note.getNoteName().equals(detectedNoteName)) {
                 targetFrequency = note.getTargetFrequency();
                 break;
             }
         }
         if (targetFrequency == 0.0) return 0.0;
+
         return 1200 * (Math.log(detectedFrequency / targetFrequency) / Math.log(2));
     }
+
 
     private void updateTuningNeedlePosition(double centsOff, boolean reset) {
         if (viewTuningNeedle == null || viewTuningIndicatorTrack == null) return;
@@ -584,7 +619,7 @@ public class MainActivity extends AppCompatActivity {
                 .start();
 
         int color = ContextCompat.getColor(this, R.color.default_text_color);
-        if (!reset && currentTuning != null && !"Selecione uma Afinação".equals(currentTuning.getName())) {
+        if (!reset && currentTuning != null) {
             if (Math.abs(centsOff) < 5) {
                 color = ContextCompat.getColor(this, R.color.tuned_green);
             } else if (Math.abs(centsOff) < 20) {
