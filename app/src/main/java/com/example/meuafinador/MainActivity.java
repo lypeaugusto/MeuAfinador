@@ -131,16 +131,10 @@ public class MainActivity extends AppCompatActivity {
         viewTuningNeedle = findViewById(R.id.viewTuningNeedle);
         viewTuningIndicatorTrack = findViewById(R.id.viewTuningIndicatorTrack);
 
-        // CORREÇÃO: Ordem de inicialização correta
-        initializeChromaticScale(); // 1. Cria a escala cromática
-        initializeTunings();        // 2. Cria as afinações (que usa a escala cromática)
+        initializeChromaticScale();
+        initializeTunings();
 
-        // Configuração do Spinner Adapter
-        spinnerAdapter = new ArrayAdapter<>(
-                this,
-                R.layout.spinner_item_custom,
-                tuningPatterns
-        );
+        spinnerAdapter = new ArrayAdapter<>(this, R.layout.spinner_item_custom, tuningPatterns);
         spinnerAdapter.setDropDownViewResource(R.layout.spinner_dropdown_item_custom);
         spinnerTuningType.setAdapter(spinnerAdapter);
 
@@ -162,7 +156,7 @@ public class MainActivity extends AppCompatActivity {
                             textViewNote.setText("--");
                             textViewFrequency.setText("Frequência: -- Hz");
                             textViewCents.setText("Cents: --");
-                            updateTuningNeedlePosition(0, true);
+                            updateTuningNeedlePosition(0, true, false);
                         });
                     }
                 } else {
@@ -209,13 +203,11 @@ public class MainActivity extends AppCompatActivity {
         }
 
         updateButtonUI();
-        updateTuningNeedlePosition(0, true);
+        updateTuningNeedlePosition(0, true, false);
     }
 
-    // NOVO MÉTODO: para criar a escala cromática completa
     private void initializeChromaticScale() {
         chromaticNotes = new ArrayList<>();
-        // Adicionando uma faixa de notas que cobre guitarra e baixo
         chromaticNotes.add(new TuningNote("C2", FREQ_C2));
         chromaticNotes.add(new TuningNote("C#2/Db2", FREQ_CS2));
         chromaticNotes.add(new TuningNote("D2", FREQ_D2));
@@ -247,14 +239,9 @@ public class MainActivity extends AppCompatActivity {
         chromaticNotes.add(new TuningNote("E4", FREQ_E4));
     }
 
-    // MÉTODO MODIFICADO: para incluir o Modo Livre
     private void initializeTunings() {
         tuningPatterns = new ArrayList<>();
-
-        // Adiciona o "Modo Livre" como a primeira opção.
         tuningPatterns.add(new TuningPattern("Modo Livre (Cromático)", chromaticNotes));
-
-        // O resto das suas afinações...
         tuningPatterns.add(new TuningPattern("E Standard", Arrays.asList(
                 new TuningNote("E2", FREQ_E2), new TuningNote("A2", FREQ_A2),
                 new TuningNote("D3", FREQ_D3), new TuningNote("G3", FREQ_G3),
@@ -282,14 +269,11 @@ public class MainActivity extends AppCompatActivity {
         )));
     }
 
-    // MÉTODO MODIFICADO: para exibir o nome da afinação corretamente
     private void updateTuningDisplay() {
         if (currentTuning != null && textViewTuningName != null) {
-            // Se for o modo cromático, apenas mostre o nome.
             if (currentTuning.getName().contains("Modo Livre")) {
                 textViewTuningName.setText(currentTuning.getName());
             } else {
-                // Para outras afinações, mostre o nome e as notas.
                 StringBuilder tuningText = new StringBuilder(currentTuning.getName() + ": ");
                 for (int i = 0; i < currentTuning.getNotes().size(); i++) {
                     tuningText.append(currentTuning.getNotes().get(i).getNoteName().split("/")[0]);
@@ -406,7 +390,7 @@ public class MainActivity extends AppCompatActivity {
             textViewNote.setText("--");
             textViewFrequency.setText("Frequência: -- Hz");
             textViewCents.setText("Cents: --");
-            updateTuningNeedlePosition(0, true);
+            updateTuningNeedlePosition(0, true, false);
         });
     }
 
@@ -423,43 +407,54 @@ public class MainActivity extends AppCompatActivity {
 
     private void processAudio() {
         short[] audioData = new short[bufferSize / 2];
-        Log.d(TAG, "Thread de processamento de áudio iniciada. Lendo " + audioData.length + " shorts.");
 
         while (isRecording && audioRecord != null && audioRecord.getRecordingState() == AudioRecord.RECORDSTATE_RECORDING) {
             int shortsRead = audioRecord.read(audioData, 0, audioData.length);
 
             if (shortsRead > 0) {
                 double detectedFrequency = calculateDominantFrequency(audioData, shortsRead);
-                String detectedNote = "--";
+                String actualNote = "--";
+                String targetNote = "--";
                 double centsOff = 0.0;
+                boolean isNoteInTune = false;
 
                 if (detectedFrequency > 0) {
-                    // CORREÇÃO: A lógica para encontrar a nota agora é unificada
-                    detectedNote = getNoteFromFrequency(detectedFrequency);
-                    centsOff = getCentsOff(detectedFrequency, detectedNote);
+                    // 1. Sempre encontre a nota cromática real mais próxima
+                    actualNote = findClosestNote(detectedFrequency, chromaticNotes);
+
+                    // 2. Encontre a nota alvo da afinação atual (se não for modo livre)
+                    if (!currentTuning.getName().contains("Modo Livre")) {
+                        targetNote = findClosestNote(detectedFrequency, currentTuning.getNotes());
+                    } else {
+                        targetNote = actualNote; // No modo livre, a nota alvo é a própria nota tocada
+                    }
+
+                    // 3. Calcule os cents de desvio em relação à nota alvo
+                    centsOff = getCentsOff(detectedFrequency, targetNote);
+
+                    // 4. Verifique se a nota tocada é a mesma que a nota alvo
+                    if (!actualNote.equals("--") && !targetNote.equals("--")) {
+                        // Comparando a parte principal do nome da nota (ex: "E2" de "E2" e "E2")
+                        isNoteInTune = actualNote.split("/")[0].equals(targetNote.split("/")[0]);
+                    }
                 }
 
-                final String finalDetectedNote = detectedNote;
+                final String finalActualNote = actualNote;
                 final double finalCentsOff = centsOff;
                 final double finalDetectedFrequency = detectedFrequency;
+                final boolean finalIsNoteInTune = isNoteInTune;
 
                 runOnUiThread(() -> {
-                    if (finalDetectedFrequency > 0) {
+                    if (finalDetectedFrequency > 0 && !finalActualNote.equals("--")) {
                         textViewFrequency.setText(String.format("Frequência: %.2f Hz", finalDetectedFrequency));
-                        if (!finalDetectedNote.equals("--")) {
-                            // Mostra a nota detectada e os cents
-                            textViewNote.setText(finalDetectedNote.split("/")[0]); // Mostra só o sustenido (Ex: C#)
-                            textViewCents.setText(String.format("Cents: %.1f", finalCentsOff));
-                        } else {
-                            textViewNote.setText("--");
-                            textViewCents.setText("Cents: --");
-                        }
+                        textViewNote.setText(finalActualNote.split("/")[0]); // Sempre mostra a nota real
+                        textViewCents.setText(String.format("Cents: %.1f", finalCentsOff));
                     } else {
                         textViewFrequency.setText("Frequência: -- Hz");
                         textViewNote.setText("--");
                         textViewCents.setText("Cents: --");
                     }
-                    updateTuningNeedlePosition(finalCentsOff, finalDetectedFrequency <= 0);
+                    updateTuningNeedlePosition(finalCentsOff, finalDetectedFrequency <= 0, finalIsNoteInTune);
                 });
 
             } else if (shortsRead < 0) {
@@ -549,45 +544,40 @@ public class MainActivity extends AppCompatActivity {
         return (detectedPitchInHz > 0) ? detectedPitchInHz : 0.0;
     }
 
-    // MÉTODO MODIFICADO E UNIFICADO para encontrar a nota mais próxima
-    private String getNoteFromFrequency(double frequency) {
-        if (frequency <= 0 || currentTuning == null || currentTuning.getNotes().isEmpty()) {
+    // MÉTODO MODIFICADO: renomeado para maior clareza, agora é um método de busca genérico.
+    private String findClosestNote(double frequency, List<TuningNote> notesToSearch) {
+        if (frequency <= 0 || notesToSearch == null || notesToSearch.isEmpty()) {
             return "--";
         }
-
         String bestMatchNote = "--";
         double minDifference = Double.MAX_VALUE;
 
-        // Percorre a lista de notas da afinação ATUAL.
-        // Para "Modo Livre", esta lista contém TODAS as notas cromáticas.
-        for (TuningNote tuningNote : currentTuning.getNotes()) {
-            double targetFreq = tuningNote.getTargetFrequency();
+        for (TuningNote note : notesToSearch) {
+            double targetFreq = note.getTargetFrequency();
             double centsDifference = Math.abs(1200 * (Math.log(frequency / targetFreq) / Math.log(2)));
 
             if (centsDifference < minDifference) {
                 minDifference = centsDifference;
-                bestMatchNote = tuningNote.getNoteName();
+                bestMatchNote = note.getNoteName();
             }
         }
 
-        // Se a nota mais próxima estiver a mais de 50 cents, está no meio de duas notas.
-        if (minDifference > 50) {
+        if (minDifference > 50) { // Tolerância de meio semitom
             return "--";
         }
-
         return bestMatchNote;
     }
 
-    // Este método agora funciona corretamente com a lógica acima
-    private double getCentsOff(double detectedFrequency, String detectedNoteName) {
-        if (detectedFrequency <= 0 || detectedNoteName == null || detectedNoteName.equals("--") || currentTuning == null) {
+    // MÉTODO MODIFICADO: Calcula os cents em relação a uma NOTA ALVO específica.
+    private double getCentsOff(double detectedFrequency, String targetNoteName) {
+        if (detectedFrequency <= 0 || targetNoteName == null || targetNoteName.equals("--")) {
             return 0.0;
         }
-
         double targetFrequency = 0.0;
-        for (TuningNote note : currentTuning.getNotes()) {
-            // A comparação deve ser feita com o nome completo da nota (ex: "C#2/Db2")
-            if (note.getNoteName().equals(detectedNoteName)) {
+
+        // Procura a frequência da nota alvo na lista cromática (que contém todas as notas)
+        for (TuningNote note : chromaticNotes) {
+            if (note.getNoteName().equals(targetNoteName)) {
                 targetFrequency = note.getTargetFrequency();
                 break;
             }
@@ -597,8 +587,8 @@ public class MainActivity extends AppCompatActivity {
         return 1200 * (Math.log(detectedFrequency / targetFrequency) / Math.log(2));
     }
 
-
-    private void updateTuningNeedlePosition(double centsOff, boolean reset) {
+    // MÉTODO MODIFICADO: Recebe um booleano para saber se a cor deve ser verde.
+    private void updateTuningNeedlePosition(double centsOff, boolean reset, boolean isNoteInTune) {
         if (viewTuningNeedle == null || viewTuningIndicatorTrack == null) return;
 
         float trackWidth = viewTuningIndicatorTrack.getWidth();
@@ -619,8 +609,9 @@ public class MainActivity extends AppCompatActivity {
                 .start();
 
         int color = ContextCompat.getColor(this, R.color.default_text_color);
-        if (!reset && currentTuning != null) {
-            if (Math.abs(centsOff) < 5) {
+        if (!reset) {
+            // A nota SÓ fica verde se a nota tocada for a nota alvo E estiver afinada em cents.
+            if (isNoteInTune && Math.abs(centsOff) < 5) {
                 color = ContextCompat.getColor(this, R.color.tuned_green);
             } else if (Math.abs(centsOff) < 20) {
                 color = ContextCompat.getColor(this, R.color.near_yellow);
